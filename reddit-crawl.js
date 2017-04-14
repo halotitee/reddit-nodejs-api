@@ -2,28 +2,41 @@ var request = require('request-promise');
 var mysql = require('promise-mysql');
 var RedditAPI = require('./reddit');
 
+crawl()
+
 function getSubreddits() {
-    return request(/* fill in the URL, it's always the same */)
+    return request('https://www.reddit.com/.json')
         .then(response => {
             // Parse response as JSON and store in variable called result
-            var response; // continue this line
+            var item = JSON.parse(response);// continue this line
 
             // Use .map to return a list of subreddit names (strings) only
-            return response.data.children.map(/* write a function */)
+            return response.data.children.map(function(element) {
+                return element.data.subreddit;
+            })
         });
 }
 
 function getPostsForSubreddit(subredditName) {
-    return request(/* fill in the URL, it will be based on subredditName */)
+    return request('https://www.reddit.com/r/' + subredditName + '/.json?limit=50')
         .then(
             response => {
                 // Parse the response as JSON and store in variable called result
-                var response; // continue this line
+                var result = JSON.parse(response); // continue this line
 
 
                 return response.data.children
-                    .filter(/* write a function */) // Use .filter to remove self-posts
-                    .map(/* write a function */) // Use .map to return title/url/user objects only
+                    .filter(function(elements) {
+                        return elements.data.is_self === true;
+                     }) // Use .filter to remove self-posts
+                    .map(function(value) {
+                        return {
+                            title: value.data.title,
+                            url: value.data.url,
+                            user: value.data.author
+                        }
+                        
+                        }) // Use .map to return title/url/user objects only
 
             }
         );
