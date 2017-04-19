@@ -7,33 +7,28 @@ class RedditAPI {
         this.conn = conn;
     }
 
-
     createUser(user) {
-        /*
-        first we have to hash the password. we will learn about hashing next week.
-        the goal of hashing is to store a digested version of the password from which
-        it is infeasible to recover the original password, but which can still be used
-        to assess with great confidence whether a provided password is the correct one or not
-         */
         return bcrypt.hash(user.password, HASH_ROUNDS)
             .then(hashedPassword => {
                 return this.conn.query('INSERT INTO users (username,password, createdAt, updatedAt) VALUES (?, ?, NOW(), NOW())', [user.username, hashedPassword]);
             })
             .then(result => {
                 return result.insertId;
-            })
-            .catch(error => {
-                // Special error handling for duplicate entry
-                if (error.code === 'ER_DUP_ENTRY') {
-                    throw new Error('A user with this username already exists');
-                }
-                else {
-                    throw error;
-                }
             });
+            // .catch(error => {
+                // Special error handling for duplicate entry
+                // if (error.code === 'ER_DUP_ENTRY') {
+                //     throw new Error('A user with this username already exists');
+                // }
+                // else {
+                //     throw error;
+                // }
+            // });
     }
-
+    
+    
     createSubreddit(subreddit) {
+        // console.log(subreddit);
         return this.conn.query(
             `
             INSERT INTO subreddits (name, description, createdAt, updatedAt)
@@ -42,18 +37,24 @@ class RedditAPI {
             .then(result => {
                 return result.insertId;
             })
-            .catch(error => {
+            // .catch(error => {
                 
-                if(error.code === 'ER_DUP_ENTRY') {
-                    throw new Error('A subreddit with this name already exists! Try another topic :)')
-                } 
-                else {
-                    throw error;
-                }
-            });
+            //     if(error.code === 'ER_DUP_ENTRY') {
+            //         throw new Error('A subreddit with this name already exists! Try another topic :)')
+            //     } 
+            //     else {
+            //         throw error;
+            //     }
+            // });
+            ;
     }
-    
-    
+
+
+//modify the createPost function to look for a subredditId property in the post 
+//object and use it. createPost should return an error if subredditId is not provided.
+
+//INSERT INTO posts (userId, title, url, createdAt, updatedAt)
+
     createPost(post) {
         return this.conn.query(
             `INSERT INTO posts (userId, title, url, createdAt, updatedAt, subredditId) VALUES (?, ?, ?, NOW(), NOW(), ?)`,
@@ -61,19 +62,19 @@ class RedditAPI {
             .then(result => {
                 //console.log(result.subredditId);
                 return result.subredditId;
-            })
-            .catch(error => {
-                // Special error handling for no subreddit ID
-                if (error.code === 'ER_NO_SRID') {
-                    throw new Error('This Subreddit does not exist');
-                }
-                else {
-                    throw error;
-                }
-                });
+            });
+            // .catch(error => {
+            //     // Special error handling for no subreddit ID
+            //     if (error.code === 'ER_NO_SRID') {
+            //         throw new Error('This Subreddit does not exist');
+            //     }
+            //     else {
+            //         throw error;
+            //     }
+            //     });
     }
-    
-    
+
+
     createVote(vote) {
             if(vote.voteDirection === 1 || vote.voteDirection === 0 || vote.voteDirection === -1) {
                 return this.conn.query(
@@ -88,17 +89,10 @@ class RedditAPI {
                 throw new Error('Bad Vote');
             }
         }
-    
-    getAllPosts() {
-        /*
-        strings delimited with ` are an ES2015 feature called "template strings".
-        they are more powerful than what we are using them for here. one feature of
-        template strings is that you can write them on multiple lines. if you try to
-        skip a line in a single- or double-quoted string, you would get a syntax error.
 
-        therefore template strings make it very easy to write SQL queries that span multiple
-        lines without having to manually split the string line by line.
-         */
+
+
+    getAllPosts() {
         return this.conn.query(
             `
             SELECT 
@@ -106,7 +100,6 @@ class RedditAPI {
                 posts.id AS posts_id, 
                 posts.title As posts_title, 
                 posts.url AS posts_url, 
-                posts.userId AS posts_userID, 
                 posts.createdAt AS posts_createdAt, 
                 posts.updatedAt AS posts_updatedAt,
                 users.id AS users_id,
@@ -123,14 +116,14 @@ class RedditAPI {
             JOIN users ON users.id = posts.userId
             JOIN subreddits ON posts.subredditId = subreddits.id
             LEFT JOIN votes ON posts.id = votes.postId
-            GROUP BY votes.postId
-            ORDER BY votes_Score
+            GROUP BY posts_id
+            ORDER BY votes_Score DESC
             LIMIT 25`
             
             
         ).then (function(result) {
             return result.map(function(val) {
-                console.log(val);
+                //console.log(val);
                     return {
                         
                         votes_Score: val.votes_Score,
@@ -156,13 +149,12 @@ class RedditAPI {
                             subreddits_updatedAt: val.subreddits_updatedAt
                         }
                         
-                    }   
+                    };   
                     //console.log('this is the result', val);
             });
         
         });
     }
-    
     
     getAllSubreddits() {
         return this.conn.query(
@@ -174,6 +166,9 @@ class RedditAPI {
             `
             );
     }
+    
+    
 }
+
 
 module.exports = RedditAPI;
